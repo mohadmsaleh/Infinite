@@ -1,0 +1,17 @@
+{
+  "name": "infiniboard-pro",
+  "version": "2.0.0",
+  "description": "InfiniBoard Pro — Infinite Canvas (Miro/Explain Everything) & PDF Study Suite (Flexcil/Notein/Goodnotes/Notewise)",
+  "private": true,
+  "scripts": {
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}
