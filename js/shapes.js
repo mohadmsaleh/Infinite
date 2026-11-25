@@ -228,11 +228,12 @@ T.def('sticky', {
 
 /* ---------- frame (work area / page) ---------- */
 T.def('frame', {
-  def: () => ({ w: 1122, h: 794, name: 'Frame', bg: '#ffffff', stroke: '#c9ced8', ori: 'landscape' }),
+  def: () => ({ w: 1122, h: 794, name: 'Frame', bg: '#ffffff', stroke: '#c9ced8', ori: 'landscape', tpl: 'blank', tplc: '#aebbd8', tsp: 32 }),
   resize: 'free', conn: true,
   draw(ctx, o, env) {
     ctx.save(); if (!env.exporting) { ctx.shadowColor = 'rgba(20,30,60,.18)'; ctx.shadowBlur = 16 * env.k; ctx.shadowOffsetY = 3 * env.k; }
     ctx.fillStyle = o.bg; ctx.fillRect(0, 0, o.w, o.h); ctx.restore();
+    if (o.tpl && o.tpl !== 'blank') Paper.draw(ctx, o, env);
     if (!env.exporting) {
       ctx.strokeStyle = o.stroke; ctx.lineWidth = 1 / env.z; ctx.strokeRect(0, 0, o.w, o.h);
       const s = 1 / env.z; ctx.font = `600 ${13 * s}px ${U.FONTS.sans}`; ctx.fillStyle = U.isDark(D.bg) ? '#cfd5e3' : '#5b6475'; ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';
@@ -253,6 +254,24 @@ T.def('frame', {
     { sec: 'Frame' }, { k: 'name', t: 'text', l: 'Name' }, { k: 'bg', t: 'color', l: 'Background', none: false },
     { t: 'btns', items: [{ l: 'Swap orientation', ic: 'orient', fn: o => Act.orientFrame(o) }] },
     { t: 'btns', items: [{ l: 'Fit to content', ic: 'expand', fn: o => Act.fitFrame(o) }, { l: 'Export frame', ic: 'download', fn: o => IO.exportDialog({ frame: o }) }] },
+    { sec: 'Paper' }, { k: 'tpl', t: 'select', l: 'Template', opts: [['blank', 'Blank'], ['lined', 'Lined'], ['grid', 'Grid'], ['dots', 'Dotted'], ['cornell', 'Cornell notes'], ['music', 'Music staff'], ['isometric', 'Isometric']] },
+    { k: 'tsp', t: 'range', l: 'Line spacing', min: 14, max: 80, step: 2, show: o => o.tpl !== 'blank' }, { k: 'tplc', t: 'color', l: 'Line colour', show: o => o.tpl !== 'blank' },
     { t: 'frameSizes' }
   ]
 });
+const Paper = {
+  draw(ctx, o, env) {
+    const w = o.w, h = o.h, sp = o.tsp || 32, z = env.z; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip(); ctx.strokeStyle = o.tplc; ctx.fillStyle = o.tplc; ctx.lineWidth = Math.max(1 / z, 1);
+    const L = (x1, y1, x2, y2) => { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); };
+    ctx.beginPath();
+    switch (o.tpl) {
+      case 'lined': for (let y = sp * 1.6; y < h; y += sp) L(0, y, w, y); break;
+      case 'grid': for (let x = sp; x < w; x += sp) L(x, 0, x, h); for (let y = sp; y < h; y += sp) L(0, y, w, y); break;
+      case 'dots': ctx.stroke(); ctx.beginPath(); for (let x = sp; x < w; x += sp) for (let y = sp; y < h; y += sp) { ctx.moveTo(x + 1.6, y); ctx.arc(x, y, 1.6, 0, 7); } ctx.fill(); ctx.restore(); return;
+      case 'cornell': { const cx = w * .28, top = h * .12, bot = h * .82; for (let y = top + sp; y < bot; y += sp) L(cx, y, w, y); ctx.stroke(); ctx.beginPath(); ctx.lineWidth = 2 / z; L(cx, top, cx, bot); L(0, top, w, top); L(0, bot, w, bot); break; }
+      case 'music': for (let y = sp * 2; y < h - sp * 2; y += sp * 3.2) for (let k = 0; k < 5; k++) L(sp, y + k * sp * .32, w - sp, y + k * sp * .32); break;
+      case 'isometric': { const dx = sp * .866 * 1.2; for (let x = 0; x < w; x += dx) L(x, 0, x, h); const t = Math.tan(Math.PI / 6); for (let c = -h / t; c < w + h / t; c += dx * 2) { L(c, 0, c + h / t, h); L(c + h / t, 0, c, h); } break; }
+    }
+    ctx.stroke(); ctx.restore();
+  }
+};

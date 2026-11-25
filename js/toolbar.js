@@ -11,7 +11,9 @@ const Menus = {
   },
   context(x, y, o, pt) {
     const s = Sel.objs(); const anchor = { x, y }; const items = [];
-    if (!s.length) {
+    if (!s.length && typeof Study !== 'undefined' && Study.on) {
+      items.push({ label: 'Paste', icon: 'paste', key: 'Ctrl+V', disabled: !Act.clip, fn: () => Act.paste(pt ? [pt.x, pt.y] : null) }, { label: 'Add text', icon: 'text', fn: () => Act.make('text', pt ? { x: pt.x, y: pt.y } : null) }, { label: 'Add image…', icon: 'image', fn: async () => { const f = await IO.pick('image/*', true); IO.addFiles(f, pt ? [pt.x, pt.y] : null); } }, { sep: true }, { label: 'Fit page width', icon: 'fit', fn: () => { const c = Study.curPage(); c && Study.goto(c); } }, { label: 'Open PDF…', icon: 'pdf', fn: async () => { const f = await IO.pick('application/pdf,.pdf', true); for (const x of f) await Study.addPdf(x); } });
+    } else if (!s.length) {
       items.push({ label: 'Paste', icon: 'paste', key: 'Ctrl+V', disabled: !Act.clip, fn: () => Act.paste(pt ? [pt.x, pt.y] : null) }, { label: 'Select all', key: 'Ctrl+A', fn: () => Act.selectAll() }, { sep: true },
         { label: 'Add sticky note', icon: 'sticky', fn: () => { const o = Act.make('sticky', pt ? { x: pt.x - 100, y: pt.y - 100 } : null); } }, { label: 'Add text', icon: 'text', fn: () => Act.make('text', pt ? { x: pt.x, y: pt.y } : null) }, { label: 'Add comment here', icon: 'comment', fn: () => pt && Act.addComment(pt.x, pt.y) }, { label: 'Add frame', icon: 'frame', fn: () => Act.addFramePreset(FRAME_PRESETS[0]) }, { sep: true },
         { label: 'Fit all content', icon: 'fit', key: 'Shift+1', fn: () => R.fitAll() }, { label: 'Board menu', icon: 'menu', sub: () => Menus.board() });
@@ -20,6 +22,7 @@ const Menus = {
       items.push({ label: 'Cut', icon: 'copy', key: 'Ctrl+X', fn: () => Act.copy(true) }, { label: 'Copy', icon: 'copy', key: 'Ctrl+C', fn: () => Act.copy(false) }, { label: 'Paste', icon: 'paste', key: 'Ctrl+V', disabled: !Act.clip, fn: () => Act.paste() }, { label: 'Duplicate', icon: 'duplicate', key: 'Ctrl+D', fn: () => Act.duplicate() }, { label: 'Copy as image', icon: 'image', fn: () => Act.copyImage() }, { label: 'Copy link to object', icon: 'share', fn: () => Act.copyLink(one) }, { sep: true });
       if (one && t.edit) items.push({ label: 'Edit', icon: 'text', key: 'Enter', fn: () => t.edit(one) });
       if (one && one.type === 'table') items.push({ label: 'Table', icon: 'table', sub: () => [{ label: 'Add row below', fn: () => Act.tableAdd(one, 'row') }, { label: 'Add column right', fn: () => Act.tableAdd(one, 'col') }, { label: 'Delete last row', fn: () => Act.tableDel(one, 'row') }, { label: 'Delete last column', fn: () => Act.tableDel(one, 'col') }] });
+      if (one && (one.src || one.type === 'hl')) items.push({ label: 'Go to source', icon: 'link', fn: () => Study.jumpSrc(one) });
       if (one && one.type === 'image') items.push({ label: 'Crop…', icon: 'mask', fn: () => Act.cropImage(one) });
       if (one && one.type === 'frame') items.push({ label: 'Swap orientation', icon: 'orient', fn: () => { Act.orientFrame(one); D.commit('Orientation', one); } }, { label: 'Export frame…', icon: 'download', fn: () => IO.exportDialog({ frame: one }) });
       items.push({ label: 'Group', icon: 'group', key: 'Ctrl+G', disabled: s.length < 2, fn: () => Act.group() }, { label: 'Ungroup', icon: 'ungroup', key: 'Ctrl+Shift+G', disabled: !s.some(o => o.gid), fn: () => Act.ungroup() },
@@ -30,7 +33,8 @@ const Menus = {
         { label: 'Add comment', icon: 'comment', fn: () => { const c = pt ? [pt.x, pt.y] : G.center(s[0]); Act.addComment(c[0], c[1], s[0].id); } },
         { label: 'Properties', icon: 'settings', fn: () => Panels.show('design') }, { label: 'Zoom to selection', icon: 'fit', key: 'Shift+2', fn: () => R.fitSel() }, { sep: true }, { label: 'Delete', icon: 'trash', danger: true, key: 'Del', fn: () => Act.del() });
     }
-    UI.menu(anchor, items, { side: 'bottom', key: 'ctx', toggle: false });
+    if (typeof Study !== 'undefined' && Study.on) { const bad = ['Layer', 'Add comment']; for (let i = items.length - 1; i >= 0; i--) if (items[i] && bad.includes(items[i].label)) items.splice(i, 1); }
+    UI.menu(anchor, items.filter(Boolean), { side: 'bottom', key: 'ctx', toggle: false });
   },
   board() {
     const g = D.grid; const gt = (t, l) => ({ label: l, checked: g.type === t, fn: () => { g.type = t; D.commit('Grid', []); R.req(); } });
@@ -97,7 +101,7 @@ const TB = {
   },
   fly(id, b) {
     const box = U.el('div', { class: 'fly' }); const F = TB.flies[id]; if (!F) return; F(box, b);
-    UI.pop(b, box, { key: 'fly', side: 'right', cls: 'pop-fly' });
+    UI.pop(b, box, { key: 'fly', side: document.getElementById('app').classList.contains('study') ? 'bottom' : 'right', cls: 'pop-fly' });
   },
   flies: {
     select(box) {
@@ -123,7 +127,7 @@ const TB = {
     line(box) {
       const o = Tools.opts.line; o.mode = 'line'; const kinds = [['arrow', 'Arrow'], ['line', 'Line'], ['double', 'Double arrow'], ['dot', 'Dot end']]; const sel = Object.keys(Heads || {}).length ? null : null;
       box.append(U.el('div', { class: 'lbl' }, 'Type'), UI.seg([['elbow', 'Elbow'], ['straight', 'Straight'], ['curve', 'Curve']], o.style, v => { o.style = v; Tools.saveOpts(); }), UI.seg([['arrow', 'Arrow'], ['line', 'Line'], ['double', 'Double'], ['dot', 'Dot']], o.kind, v => { o.kind = v; Tools.saveOpts(); }),
-        UI.field('Line style', UI.seg([['solid', 'Solid'], ['dash', 'Dashed'], ['dot', 'Dotted']], o.dash, v => { o.dash = v; Tools.saveOpts(); })), UI.field('Width', UI.range(1, 16, 1, o.sw, v => { o.sw = v; Tools.saveOpts(); }, { fmt: v => v + ' px' })), UI.field('Colour', UI.swatchBtn(o.color, c => { o.color = c; Tools.saveOpts(); }), 'inline'),
+        UI.field('Line style', UI.seg([['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']], o.dash, v => { o.dash = v; Tools.saveOpts(); })), UI.field('Width', UI.range(1, 16, 1, o.sw, v => { o.sw = v; Tools.saveOpts(); }, { fmt: v => v + ' px' })), UI.field('Colour', UI.swatchBtn(o.color, c => { o.color = c; Tools.saveOpts(); }), 'inline'),
         U.el('div', { class: 'hint' }, 'Drag between two objects to attach a dynamic connector. Drag from the blue handles on a selected object. Attach to any side (top/right/bottom/left) or let it pick automatically.'), UI.btn('Draw connector', 'connector', () => { UI.closeAll(); Tools.set('connector'); }, 'sm primary')); Tools.set('shape');
     },
     text(box) { const o = Tools.opts.text; box.append(UI.field('Font size', UI.range(10, 160, 1, o.fs, v => { o.fs = v; Tools.saveOpts(); }, { fmt: v => v + ' px' })), UI.field('Colour', UI.swatchBtn(o.tc, c => { o.tc = c; Tools.saveOpts(); }), 'inline'), U.el('div', { class: 'hint' }, 'Click the board to type. Double-click any shape or note to edit its text.')); Tools.set('text'); },

@@ -20,33 +20,45 @@ const App = {
     // share target: ?title=&text=&url=
     const q = new URLSearchParams(location.search); const shared = q.get('url') || q.get('text');
     if (m) { if (D.id !== m[1]) await App.open(m[1]); if (m[2]) App.goLink(m[2]); }
-    else if (D.id) await App.close(true); else await App.home();
+    else if (D.id) await App.close(true); else if (h === 'study') await App.home('study'); else if (h === 'whiteboard') await App.home('board'); else await App.launcher();
     if (shared && !m) { history.replaceState(null, '', location.pathname); const id = await App.create('Shared'); await App.open(id); setTimeout(() => IO.addData('', q.get('url') || '', q.get('text') || '', null), 300); }
   },
   goLink(s) { // #/b/<id>/o/<objid>  or  /v/x,y,z
     const [k, v] = s.split('/'); if (k === 'o') { const o = D.byId.get(v); if (o) { Sel.set([o.id]); R.fitRect(G.aabb(o), 120, true, 1.5); } } else if (k === 'v') { const [x, y, z] = v.split(',').map(Number); if (isFinite(x + y + z)) R.animate({ x, y, z }); }
   },
   async list() { const m = await DB.all('meta'); App.boards = m.sort((a, b) => b.modified - a.modified); return App.boards; },
-  async create(name) { D.reset(name); D.initHistory(); await D.save(false); const id = D.id; D.id = null; return id; },
+  async create(name, kind) { D.reset(name, kind); D.initHistory(); await D.save(false); const id = D.id; D.id = null; return id; },
   /* ---- home ---- */
-  async home() {
-    App.view = 'home'; U.$('#app').classList.remove('editing'); U.$('#home').classList.add('on'); const root = U.$('#home'); const boards = await App.list(); root.innerHTML = '';
+  async home(kind) {
+    kind = kind || App.kind || 'board'; App.kind = kind; const study = kind === 'study';
+    App.view = 'home'; U.$('#app').classList.remove('editing'); U.$('#home').classList.add('on'); const root = U.$('#home'); const boards = (await App.list()).filter(b => (b.kind || 'board') === kind); root.innerHTML = '';
     const q = { v: '' }, sortBy = { v: localStorage.getItem('ib.sort') || 'modified' };
-    const grid = U.el('div', { class: 'cards' });
+    const grid = U.el('div', { class: 'cards' + (study ? ' st' : '') });
     const draw = () => {
       grid.innerHTML = ''; let list = boards.filter(b => b.name.toLowerCase().includes(q.v.toLowerCase())); list.sort((a, b) => sortBy.v === 'name' ? a.name.localeCompare(b.name) : sortBy.v === 'created' ? b.created - a.created : b.modified - a.modified);
-      grid.append(U.el('button', { class: 'card new', onclick: () => App.newBoard() }, U.el('div', { class: 'plus', html: U.icon('plus', 40) }), U.el('b', null, 'New board')));
+      if (study) { grid.append(U.el('button', { class: 'card new', onclick: () => App.studyOpenPdf() }, U.el('div', { class: 'plus', html: U.icon('pdf', 40) }), U.el('b', null, 'Open PDF')), U.el('button', { class: 'card new', onclick: () => App.studyNotebook() }, U.el('div', { class: 'plus', html: U.icon('notebook', 40) }), U.el('b', null, 'New notebook'))); } else grid.append(U.el('button', { class: 'card new', onclick: () => App.newBoard() }, U.el('div', { class: 'plus', html: U.icon('plus', 40) }), U.el('b', null, 'New board')));
       list.forEach(b => {
-        const c = U.el('div', { class: 'card', tabindex: 0, onclick: () => { location.hash = '#/b/' + b.id; } }, U.el('div', { class: 'thumb', style: b.thumb ? `background-image:url(${b.thumb})` : '' }, b.thumb ? null : U.el('span', { html: U.icon('pointer', 36) })), U.el('div', { class: 'cinfo' }, U.el('b', null, b.name), U.el('small', null, `${b.count || 0} objects · ${U.fmtDate(b.modified)}`)),
-          U.el('button', { class: 'ibtn cm', title: 'Options', html: U.icon('more', 18), onclick: e => { e.stopPropagation(); UI.menu(e.currentTarget, [{ label: 'Open', icon: 'pointer', fn: () => location.hash = '#/b/' + b.id }, { label: 'Rename…', icon: 'text', fn: async () => { const v = await UI.prompt('Board name', b.name); if (v) { const d = await DB.get('data', b.id); const j = JSON.parse(d.json); j.name = v; await DB.put('data', { id: b.id, json: JSON.stringify(j) }); b.name = v; await DB.put('meta', b); draw(); } } }, { label: 'Duplicate', icon: 'duplicate', fn: async () => { await App.dup(b.id); App.home(); } }, { label: 'Export board file', icon: 'download', fn: async () => { await App.open(b.id, true); U.download(await IO.boardBlob(), b.name.replace(/[\\/:*?"<>|]+/g, '_') + '.infiniboard.json'); await App.close(true, true); } }, { sep: true }, { label: 'Delete', icon: 'trash', danger: true, fn: async () => { if (await UI.confirm(`Delete “${b.name}”? This cannot be undone.`, 'Delete', true)) { await App.del(b.id); App.home(); } } }], { side: 'bottom', align: 'end' }); } }));
+        const c = U.el('div', { class: 'card', tabindex: 0, onclick: () => { location.hash = '#/b/' + b.id; } }, U.el('div', { class: 'thumb', style: b.thumb ? `background-image:url(${b.thumb})` : '' }, b.thumb ? null : U.el('span', { html: U.icon(study ? 'pdf' : 'pointer', 36) })), U.el('div', { class: 'cinfo' }, U.el('b', null, b.name), U.el('small', null, study ? `${b.pages ? b.pages + ' page' + (b.pages > 1 ? 's' : '') + ' · ' : ''}${U.fmtDate(b.modified)}` : `${b.count || 0} objects · ${U.fmtDate(b.modified)}`)),
+          U.el('button', { class: 'ibtn cm', title: 'Options', html: U.icon('more', 18), onclick: e => { e.stopPropagation(); UI.menu(e.currentTarget, [{ label: 'Open', icon: 'pointer', fn: () => location.hash = '#/b/' + b.id }, { label: 'Rename…', icon: 'text', fn: async () => { const v = await UI.prompt('Board name', b.name); if (v) { const d = await DB.get('data', b.id); const j = JSON.parse(d.json); j.name = v; await DB.put('data', { id: b.id, json: JSON.stringify(j) }); b.name = v; await DB.put('meta', b); draw(); } } }, { label: 'Duplicate', icon: 'duplicate', fn: async () => { await App.dup(b.id); App.home(kind); } }, { label: 'Export board file', icon: 'download', fn: async () => { await App.open(b.id, true); U.download(await IO.boardBlob(), b.name.replace(/[\\/:*?"<>|]+/g, '_') + '.infiniboard.json'); await App.close(true, true); } }, { sep: true }, { label: 'Delete', icon: 'trash', danger: true, fn: async () => { if (await UI.confirm(`Delete “${b.name}”? This cannot be undone.`, 'Delete', true)) { await App.del(b.id); App.home(kind); } } }], { side: 'bottom', align: 'end' }); } }));
         grid.append(c);
       });
       if (!list.length && q.v) grid.append(U.el('div', { class: 'empty' }, 'No boards match your search.'));
     };
-    const search = U.el('input', { class: 'inp search', type: 'search', placeholder: 'Search boards…', oninput: e => { q.v = e.target.value; draw(); } });
-    root.append(U.el('div', { class: 'htop' }, U.el('div', { class: 'logo' }, U.el('span', { html: U.icon('pointer', 26) }), U.el('b', null, 'InfiniBoard')), search, U.el('span', { class: 'sp' }), UI.select([['modified', 'Last modified'], ['created', 'Newest'], ['name', 'Name']], sortBy.v, v => { sortBy.v = v; localStorage.setItem('ib.sort', v); draw(); }), UI.btn('Import', 'upload', async () => { const [f] = await IO.pick('.json,application/json'); if (!f) return; try { await IO.importBoard(f); UI.toast('Imported'); App.home(); } catch (e) { UI.toast(e.message, 3500, 'err'); } }), UI.ibtn('settings', 'Settings', () => App.settings())),
-      U.el('div', { class: 'hbody' }, U.el('h2', null, 'Your boards'), grid, U.el('div', { class: 'foot' }, 'Boards are stored on this device (IndexedDB) and saved automatically. Use Export to back up or move a board.'))); draw();
+    const search = U.el('input', { class: 'inp search', type: 'search', placeholder: study ? 'Search library…' : 'Search boards…', oninput: e => { q.v = e.target.value; draw(); } });
+    root.append(U.el('div', { class: 'htop' }, U.el('div', { class: 'logo', style: 'cursor:pointer', title: 'Back to start', onclick: () => { location.hash = ''; } }, U.el('span', { html: U.icon(study ? 'study' : 'pointer', 26) }), U.el('b', null, study ? 'PDF & Notes' : 'InfiniBoard Whiteboard')), search, U.el('span', { class: 'sp' }), UI.select([['modified', 'Last modified'], ['created', 'Newest'], ['name', 'Name']], sortBy.v, v => { sortBy.v = v; localStorage.setItem('ib.sort', v); draw(); }), UI.btn('Import', 'upload', async () => { const [f] = await IO.pick('.json,application/json'); if (!f) return; try { await IO.importBoard(f); UI.toast('Imported'); App.home(kind); } catch (e) { UI.toast(e.message, 3500, 'err'); } }), UI.ibtn('settings', 'Settings', () => App.settings())),
+      U.el('div', { class: 'hbody' }, U.el('h2', null, study ? 'Library' : 'Your boards'), grid, U.el('div', { class: 'foot' }, 'Everything is stored on this device and saved automatically. Use Export to back up.'))); draw();
   },
+  async launcher() {
+    App.view = 'launcher'; U.$('#app').classList.remove('editing'); U.$('#home').classList.add('on'); const root = U.$('#home'); root.innerHTML = '';
+    const card = (ic, title, desc, tags, fn, cls) => U.el('button', { class: 'lcard ' + cls, onclick: fn }, U.el('div', { class: 'lic', html: U.icon(ic, 46) }), U.el('h3', null, title), U.el('p', null, desc), U.el('div', { class: 'ltags' }, ...tags.map(t => U.el('span', null, t))));
+    root.append(U.el('div', { class: 'launch' }, U.el('div', { class: 'lhead' }, U.el('div', { class: 'logo big' }, U.el('span', { html: U.icon('pointer', 34) }), U.el('b', null, 'InfiniBoard')), U.el('p', null, 'Choose how you want to work'), UI.ibtn('settings', 'Settings', () => App.settings())),
+      U.el('div', { class: 'lcards' },
+        card('pointer', 'Whiteboard', 'Infinite canvas for drawing, diagrams, mind maps, kanban, sticky notes and presentations.', ['Infinite canvas', 'Shapes & connectors', 'Tables · Kanban · Mind map', 'Recording'], () => { location.hash = '#/whiteboard'; }, 'wb'),
+        card('study', 'PDF & Notes', 'Read and annotate PDFs, clip parts and link them to their source, write notebooks, and collect research across documents.', ['Multiple PDFs', 'Highlight · Clip · Link', 'Notebooks & templates', 'Search & research'], () => { location.hash = '#/study'; }, 'st'))));
+  },
+  async studyOpenPdf() { const f = await IO.pick('application/pdf,.pdf', true); if (!f.length) return; const id = await App.create(f[0].name.replace(/\.pdf$/i, ''), 'study'); App.pending = { files: f }; location.hash = '#/b/' + id; },
+  async studyNotebook() { const id = await App.create('Study space', 'study'); App.pending = { notebook: true }; location.hash = '#/b/' + id; },
+  async studyEmpty() { const id = await App.create('Study space', 'study'); location.hash = '#/b/' + id; },
   async newBoard() {
     const t = [['blank', 'Blank infinite canvas', 'pointer'], ['slides', 'Whiteboard with A4 pages', 'pages'], ['brain', 'Brainstorm (sticky notes)', 'sticky'], ['kanban', 'Kanban planner', 'kanban']];
     const body = U.el('div', null, UI.field('Name', U.el('input', { class: 'inp', id: 'nbn', value: 'Untitled board', onkeydown: e => e.stopPropagation() })), U.el('div', { class: 'lbl' }, 'Start from'), U.el('div', { class: 'tpls' }, ...t.map(([k, l, ic], i) => U.el('label', { class: 'tpl' }, U.el('input', { type: 'radio', name: 'tpl', value: k, checked: i === 0 }), U.el('span', { html: U.icon(ic, 26) }), U.el('b', null, l)))));
@@ -57,7 +69,7 @@ const App = {
     D.commit('Template', 'all'); R.fitAll(true);
   },
   async dup(id) { const d = await DB.get('data', id), m = await DB.get('meta', id); const nid = U.uid('b'); const j = JSON.parse(d.json); j.id = nid; j.name = j.name + ' copy'; j.created = j.modified = Date.now(); await DB.put('data', { id: nid, json: JSON.stringify(j) }); await DB.put('meta', Object.assign({}, m, { id: nid, name: j.name, created: j.created, modified: j.modified })); const as = await DB.byIndex('assets', 'bid', id); for (const a of as) await DB.put('assets', Object.assign({}, a, { key: nid + '|' + a.id, bid: nid })); return nid; },
-  async del(id) { await DB.del('data', id); await DB.del('meta', id); await DB.delByIndex('assets', 'bid', id); await DB.delByIndex('versions', 'bid', id); },
+  async del(id) { try { const d = await DB.get('data', id); const j = d && JSON.parse(d.json); for (const x of (j && j.extra && j.extra.docs) || []) await DB.del('data', 'txt|' + id + '|' + x.id); } catch (e) { } await DB.del('data', id); await DB.del('meta', id); await DB.delByIndex('assets', 'bid', id); await DB.delByIndex('versions', 'bid', id); },
   async duplicate() { await D.save(true); const id = await App.dup(D.id); UI.toast('Duplicated — opening copy'); location.hash = '#/b/' + id; },
   async removeCurrent() { if (await UI.confirm(`Delete “${D.name}” permanently?`, 'Delete board', true)) { const id = D.id; D.dirty = false; await App.close(true, true); await App.del(id); location.hash = ''; } },
   /* ---- open / close ---- */
@@ -65,7 +77,7 @@ const App = {
     const d = await DB.get('data', id); if (!d) { UI.toast('Board not found', 3000, 'err'); location.hash = ''; return; }
     if (D.id && D.id !== id) await App.close(true, true);
     AS.clear(); D.fromJSON(d.json); await AS.loadAll(id); Sel.ids = []; D.initHistory(); D.openJson = D.toJSON(); D.dirty = false; D.lastVersion = Date.now();
-    if (!silent) { U.$('#home').classList.remove('on'); U.$('#home').innerHTML = ''; U.$('#app').classList.add('editing'); App.view = 'board'; U.$('#boardname').value = D.name; Tools.set('select'); R.resize(); R.req(); Bus.emit('view'); Bus.emit('sel'); Bus.emit('struct'); TB.sync(); if (App.tpl) { App.applyTemplate(App.tpl); App.tpl = null; } else if (!D.objs.length) R.reqOv(); }
+    if (!silent) { U.$('#home').classList.remove('on'); U.$('#home').innerHTML = ''; U.$('#app').classList.add('editing'); App.view = 'board'; U.$('#boardname').value = D.name; Tools.set('select'); R.resize(); R.req(); Bus.emit('view'); Bus.emit('sel'); Bus.emit('struct'); TB.sync(); if (D.kind === 'study') { Study.enter(); } else if (typeof Study !== 'undefined' && Study && Study.on) Study.leave(); if (App.tpl) { App.applyTemplate(App.tpl); App.tpl = null; } else if (!D.objs.length) R.reqOv(); if (App.pending) { const p = App.pending; App.pending = null; setTimeout(async () => { if (p.files) for (const f of p.files) await Study.addPdf(f); if (p.notebook) Study.notebookDialog(); }, 200); } }
   },
   async close(skipDialog, silent) {
     if (!D.id) return true;
@@ -75,8 +87,8 @@ const App = {
       if (r === 'discard') { D.fromJSON(D.openJson); D.dirty = false; }
     }
     if (Rec.on) Rec.stop(); if (Embeds.active) Embeds.deactivate(); Ed.cur && Ed.close();
-    await D.save(true); const wasId = D.id; D.id = null; D.objs = []; D.byId = new Map(); AS.clear(); Panels.tab && Panels.hide(); Sel.ids = []; Ctx.el.classList.remove('on'); R.req();
-    if (!silent) { if (location.hash) history.replaceState(null, '', location.pathname + location.search); await App.home(); }
+    await D.save(true); const wasId = D.id, wasKind = D.kind; if (typeof Study !== 'undefined' && Study && Study.on) Study.leave(); D.id = null; D.objs = []; D.byId = new Map(); AS.clear(); Panels.tab && Panels.hide(); Sel.ids = []; Ctx.el.classList.remove('on'); R.req();
+    if (!silent) { history.replaceState(null, '', location.pathname + location.search + '#/' + (wasKind === 'study' ? 'study' : 'whiteboard')); await App.home(wasKind); }
     return true;
   },
   /* ---- dialogs ---- */

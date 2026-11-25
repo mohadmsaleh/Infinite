@@ -10,3 +10,6 @@ Infinite whiteboard / drawing / presentation canvas (Miro + Explain Everything s
 - Or open the hosted site in Chrome on Android → "Add to Home screen" (installs as a PWA).
 
 Boards are stored on-device (IndexedDB); use Board menu → Export for backups. Press `?` in the app for shortcuts.
+
+## PDF & Notes mode
+Start screen → **PDF & Notes**. Open several PDFs and notebooks in one space; highlight text (U), clip a region and keep it linked to its source (O), search across all PDFs, collect highlights/clips in the Research panel, export annotated PDFs. PDF engine: pdf.js (bundled in `js/vendor`).

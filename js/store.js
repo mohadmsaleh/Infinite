@@ -62,7 +62,7 @@ const AS = {
   url(id) { const e = this.map.get(id); if (!e) return ''; if (!e.url) e.url = URL.createObjectURL(e.blob); return e.url; },
   img(id) {
     const e = this.map.get(id); if (!e) return null;
-    if (!e.img) { e.img = new Image(); e.img.onload = () => { if (window.R) R.req(); }; e.img.src = this.url(id); }
+    if (!e.img) { e.img = new Image(); e.img.onload = () => { if ((typeof R !== 'undefined' && R)) R.req(); }; e.img.src = this.url(id); }
     return e.img.complete && e.img.naturalWidth ? e.img : null;
   },
   media(id, kind) {

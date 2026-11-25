@@ -29,6 +29,7 @@ const R = {
   viewRect() { const v = D.view; return { x: v.x, y: v.y, w: R.W / v.z, h: R.H / v.z }; },
   frame() {
     if (!D.id) return;
+    if (typeof Study !== 'undefined' && Study.on && !R.animating && Study.clamp()) { R._c = true; R._o = true; }
     if (R._c) {
       R._c = false;
       R.visList = D.sorted().filter(o => D.isVisible(o));

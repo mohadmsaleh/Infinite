@@ -89,7 +89,7 @@ const Comments = {
   pos(c) { const [x, y] = Act.commentPos(c); return R.w2s(x, y); },
   pinAt(pt) { if (!ST.v.comments) return null; for (let i = D.comments.length - 1; i >= 0; i--) { const c = D.comments[i]; const s = Comments.pos(c); if (Math.hypot(pt.sx - s[0], pt.sy - (s[1] - 14)) < 16) return c; } return null; },
   draw(ctx) {
-    if (!ST.v.comments || (window.Rec && Rec.on)) return;
+    if (!ST.v.comments || ((typeof Rec !== 'undefined' && Rec) && Rec.on)) return;
     D.comments.forEach((c, i) => {
       const [x, y] = Comments.pos(c); const open = Comments.cur === c.id; ctx.save(); ctx.translate(x, y);
       ctx.fillStyle = c.res ? '#94a3b8' : '#f59e0b'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2; ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, -16, 14, Math.PI * .72, Math.PI * .28, true); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.shadowColor = 'transparent';

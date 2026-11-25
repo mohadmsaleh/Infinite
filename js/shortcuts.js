@@ -30,8 +30,10 @@ const Keys = {
       }
       if (used) e.preventDefault(); return;
     }
+    if (typeof Study !== 'undefined' && Study && Study.on && !sh && (e.key === 'PageDown' || e.key === 'PageUp') && Study.key(K, e)) { e.preventDefault(); return; }
     if (alt && K === 'r') { Rec.panel(U.$('#recbtn')); e.preventDefault(); return; }
     if (alt) return;
+    if (typeof Study !== 'undefined' && Study && Study.on && Study.key(K, e)) { e.preventDefault(); return; }
     const tool = { v: 'select', h: 'hand', p: 'pen', e: 'eraser', t: 'text', n: 'sticky', f: 'frame', g: 'fill', z: 'laser', c: 'comment', m: 'marquee', q: 'lasso', x: 'cutout', k: 'connector' }[K];
     if (sh && K === 'h') { Act.flip('h'); e.preventDefault(); return; } if (sh && K === 'v') { Act.flip('v'); e.preventDefault(); return; }
     if (sh && K === 'm') { ST.set('minimap', !ST.v.minimap); R.reqOv(); return; } if (sh && K === 'd') { ST.set('dims', !ST.v.dims); R.reqOv(); return; }

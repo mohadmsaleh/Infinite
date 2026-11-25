@@ -44,6 +44,7 @@ const IO = {
         else if (/^video\//.test(f.type)) o = await IO.addVideo(f, p);
         else if (/^audio\//.test(f.type)) o = await IO.addAudio(f, p);
         else if (/^(txt|md)$/.test(ext) && f.size < 200000) o = await IO.addText(f, p);
+        else if ((ext === 'pdf' || f.type === 'application/pdf') && D.kind === 'study') { await Study.addPdf(f, files.length > 1 || pt ? { x: pt ? pt[0] : undefined, y: pt ? pt[1] : undefined } : null); i++; continue; }
         else if (ext === 'pdf' || f.type === 'application/pdf') { const ch = files.length === 1 ? await UI.choice('PDF', 'How would you like to add this PDF?', [{ label: 'File card', value: 'file' }, { label: 'Pages as images', value: 'pages', primary: true }]) : 'file'; if (ch === 'pages') { const pg = await IO.pdfPages(f, p); if (pg && pg.length) { out.push(...pg); i++; continue; } } if (ch === null) continue; o = await IO.addFileCard(f, p); if (ch === 'file') { o.prev = false; } }
         else o = await IO.addFileCard(f, p);
         if (o) out.push(o);
@@ -194,7 +195,7 @@ const IO = {
     };
     render(); body.append(scopeBox, optBox);
     const go = async copy => {
-      UI.toast('Rendering…', 1500); const bg = S.bg === 'none' ? null : S.bg === 'white' ? '#ffffff' : undefined; const base = { scale: S.scale, bg, grid: S.grid }; const targets = [];
+      UI.toast('Rendering…', 1500); if (D.kind === 'study') { try { await Study.warm(S.scope === 'board' ? null : (S.scope === 'view' ? [R.viewRect()] : S.scope === 'sel' ? [G.union(Sel.objs())] : frames.map(f => ({ x: f.x, y: f.y, w: f.w, h: f.h }))), S.scale); } catch (e) { console.warn(e); } } const bg = S.bg === 'none' ? null : S.bg === 'white' ? '#ffffff' : undefined; const base = { scale: S.scale, bg, grid: S.grid }; const targets = [];
       if (S.scope === 'board') targets.push({}); else if (S.scope === 'view') targets.push({ area: R.viewRect(), all: true, clip: true }); else if (S.scope === 'sel') targets.push({ objs: Sel.objs(), pad: 24 });
       else if (S.scope === 'frame') { const f = D.byId.get(S.frameId); targets.push({ area: { x: f.x, y: f.y, w: f.w, h: f.h }, all: true, frame: f, bg: bg === undefined ? f.bg : bg }); }
       else frames.forEach(f => targets.push({ area: { x: f.x, y: f.y, w: f.w, h: f.h }, all: true, frame: f, bg: bg === undefined ? f.bg : bg }));

@@ -183,7 +183,7 @@ const Tools = {
   onWheel(e) {
     e.preventDefault(); const r = R.ov.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
     const mouseWheel = e.deltaMode === 1 || (Math.abs(e.deltaY) >= 50 && e.deltaX === 0 && Number.isInteger(e.deltaY));
-    const zoom = e.ctrlKey || e.metaKey || (ST.v.wheel === 'zoom') || (ST.v.wheel === 'auto' && mouseWheel);
+    const rd = typeof Study !== 'undefined' && Study.on; const zoom = e.ctrlKey || e.metaKey || (!rd && ((ST.v.wheel === 'zoom') || (ST.v.wheel === 'auto' && mouseWheel)));
     if (zoom) { const k = Math.exp(-e.deltaY * (e.ctrlKey ? .01 : mouseWheel ? .0016 : .004)); R.zoomAt(k, sx, sy); }
     else if (e.shiftKey && !e.deltaX) R.pan(-e.deltaY, 0); else R.pan(-e.deltaX, -e.deltaY);
   },
@@ -542,7 +542,7 @@ Tools.H.connector = {
 
 /* ---------- overlay painting ---------- */
 Tools.overlay = ctx => {
-  const z = D.view.z, rec = window.Rec && Rec.on;
+  const z = D.view.z, rec = (typeof Rec !== 'undefined' && Rec) && Rec.on;
   // snap guides
   if (Snap.guides.length) { ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.beginPath(); for (const g of Snap.guides) { if (g.v === 'x') { const a = R.w2s(g.at, g.a), b = R.w2s(g.at, g.b); ctx.moveTo(a[0], a[1] - 8); ctx.lineTo(b[0], b[1] + 8); } else { const a = R.w2s(g.a, g.at), b = R.w2s(g.b, g.at); ctx.moveTo(a[0] - 8, a[1]); ctx.lineTo(b[0] + 8, b[1]); } } ctx.stroke(); ctx.setLineDash([]); }
   // live pen stroke
@@ -594,7 +594,7 @@ Tools.overlay = ctx => {
     if (p) label(ctx, p[0], p[1], d.text);
   }
   // comments, ruler, recording area, laser spotlight
-  Comments.draw(ctx); if (Ruler.on) Ruler.draw(ctx); if (window.Rec) Rec.drawArea(ctx);
+  Comments.draw(ctx); if (Ruler.on) Ruler.draw(ctx); if ((typeof Rec !== 'undefined' && Rec)) Rec.drawArea(ctx);
   function outlineObj(c, o, col, w) { const t = T.get(o.type); let pts; if (t.bounds && o.type === 'connector') { const rt = Conn.route(o); c.strokeStyle = col; c.lineWidth = w + 2; c.lineCap = 'round'; c.beginPath(); rt.pts.forEach((p, i) => { const s = R.w2s(p[0], p[1]); i ? c.lineTo(s[0], s[1]) : c.moveTo(s[0], s[1]); }); c.stroke(); return; } pts = G.corners(o).map(p => R.w2s(p[0], p[1])); c.strokeStyle = col; c.lineWidth = w; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.stroke(); }
 };
 function dot(ctx, x, y, r, fill, stroke, kind) { ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke(); if (kind === 'rot') { ctx.beginPath(); ctx.arc(x, y, 3.3, -2.2, 1.4); ctx.stroke(); } }

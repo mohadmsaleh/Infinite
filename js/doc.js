@@ -64,11 +64,12 @@ const COMMON = { x: 0, y: 0, w: 100, h: 100, rot: 0, fx: false, fy: false, layer
 const D = {
   id: null, name: 'Untitled', created: 0, modified: 0, bg: '#ffffff', grid: { type: 'dots', size: 24 },
   layers: [], active: null, objs: [], byId: new Map(), comments: [], view: { x: -200, y: -150, z: 1 },
-  hist: [], hi: -1, dirty: false, _ord: null, openJson: null,
+  hist: [], hi: -1, dirty: false, _ord: null, openJson: null, kind: 'board', extra: {},
 
-  reset(name) {
+  reset(name, kind) {
+    D.kind = kind || 'board'; D.extra = {};
     D.id = U.uid('b'); D.name = name || 'Untitled board'; D.created = D.modified = Date.now();
-    D.bg = '#ffffff'; D.grid = { type: 'dots', size: 24 };
+    D.bg = D.kind === 'study' ? '#e8ebf1' : '#ffffff'; D.grid = { type: D.kind === 'study' ? 'none' : 'dots', size: 24 };
     const l = { id: U.uid('L'), n: 'Layer 1', v: true, l: false, o: 1 };
     D.layers = [l]; D.active = l.id; D.objs = []; D.byId = new Map(); D.comments = []; D.view = { x: -300, y: -200, z: 1 };
     D._ord = null; D.hist = []; D.hi = -1; D.dirty = false;
@@ -131,7 +132,7 @@ const D = {
     D.objs = list; D.byId = new Map(list.map(o => [o.id, o])); D._ord = null;
     const m = JSON.parse(s.meta); D.bg = m.bg; D.grid = m.grid; D.layers = m.layers; D.active = m.active; D.comments = m.comments;
     Sel.ids = Sel.ids.filter(id => D.byId.has(id));
-    if (window.Ed) Ed.close(true);
+    if ((typeof Ed !== 'undefined' && Ed)) Ed.close(true);
     D.modified = Date.now(); D.dirty = true; D.queueSave(); R.req(); Bus.emit('sel'); Bus.emit('struct'); Bus.emit('restored');
   },
   undo() { if (D.hi > 0) { D.hi--; D.restore(D.hist[D.hi]); } },
@@ -140,14 +141,14 @@ const D = {
   canUndo: () => D.hi > 0, canRedo: () => D.hi < D.hist.length - 1,
   initHistory() { D.hist = [D.snapshot('Open')]; D.hi = 0; },
   toJSON() {
-    const head = JSON.stringify({ v: 1, id: D.id, name: D.name, created: D.created, modified: D.modified, bg: D.bg, grid: D.grid, layers: D.layers, active: D.active, comments: D.comments, view: D.view });
+    const head = JSON.stringify({ v: 1, id: D.id, name: D.name, created: D.created, modified: D.modified, bg: D.bg, grid: D.grid, layers: D.layers, active: D.active, comments: D.comments, view: D.view, kind: D.kind, extra: D.extra });
     return head.slice(0, -1) + ',"objs":[' + D.objs.map(D.oj).join(',') + ']}';
   },
   fromJSON(str) {
     const j = typeof str === 'string' ? JSON.parse(str) : str;
     D.id = j.id; D.name = j.name; D.created = j.created; D.modified = j.modified; D.bg = j.bg || '#ffffff';
     D.grid = j.grid || { type: 'dots', size: 24 }; D.layers = j.layers && j.layers.length ? j.layers : [{ id: U.uid('L'), n: 'Layer 1', v: true, l: false, o: 1 }];
-    D.active = j.active || D.layers[0].id; D.comments = j.comments || []; D.view = j.view || { x: -300, y: -200, z: 1 };
+    D.kind = j.kind || 'board'; D.extra = j.extra || {}; D.active = j.active || D.layers[0].id; D.comments = j.comments || []; D.view = j.view || { x: -300, y: -200, z: 1 };
     D.objs = (j.objs || []).filter(o => T.reg[o.type]); D.byId = new Map(D.objs.map(o => [o.id, o])); D._ord = null; D.dirty = false;
   },
   queueSave: U.debounce(() => D.save(), 1500),
@@ -157,9 +158,9 @@ const D = {
       await AS.saveDirty(D.id);
       const json = D.toJSON();
       let meta = (await DB.get('meta', D.id)) || {};
-      if (thumb !== false && window.IO && (thumb === true || Date.now() - (meta.thumbT || 0) > 15000)) { try { meta.thumb = await IO.thumb(); meta.thumbT = Date.now(); } catch (e) { } }
+      if (thumb !== false && typeof IO !== 'undefined' && IO && (thumb === true || Date.now() - (meta.thumbT || 0) > 15000)) { try { meta.thumb = await IO.thumb(); meta.thumbT = Date.now(); } catch (e) { } }
       await DB.put('data', { id: D.id, json });
-      await DB.put('meta', Object.assign(meta, { id: D.id, name: D.name, modified: D.modified, created: D.created, count: D.objs.length }));
+      await DB.put('meta', Object.assign(meta, { id: D.id, name: D.name, modified: D.modified, created: D.created, count: D.objs.length, kind: D.kind, pages: (D.kind === 'study' && typeof Study !== 'undefined' && Study) ? Study.docs().reduce((n, x) => n + (x.pages || 0), 0) : undefined }));
       D.lastSaved = Date.now(); Bus.emit('saved');
       if (Date.now() - (D.lastVersion || 0) > 5 * 60 * 1000 && D.objs.length) D.saveVersion('Auto-save', true);
     } catch (e) { console.error('save failed', e); UI.toast('Could not save: ' + e.message, 4000, 'err'); }

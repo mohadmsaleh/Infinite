@@ -111,7 +111,7 @@ const Ctx = {
 
 /* ---------- panels dock ---------- */
 const Panels = {
-  tab: null, tabs: [['design', 'Properties', 'settings'], ['layers', 'Layers', 'layers'], ['pages', 'Pages', 'pages'], ['comments', 'Comments', 'comment'], ['history', 'History', 'history'], ['find', 'Find', 'find']],
+  ext: {}, tab: null, tabs: [['design', 'Properties', 'settings'], ['layers', 'Layers', 'layers'], ['pages', 'Pages', 'pages'], ['comments', 'Comments', 'comment'], ['history', 'History', 'history'], ['find', 'Find', 'find']],
   init() {
     Panels.el = U.$('#panel'); Bus.on('sel', () => { if (Panels.tab === 'design') Panels.render(); else if (ST.v.autoPanel !== false && Sel.ids.length && !Panels.tab && innerWidth > 1100 && !Panels.dismissed) Panels.show('design'); });
     Bus.on('struct', U.debounce(() => { if (Panels.tab && Panels.tab !== 'design' && Panels.tab !== 'find') Panels.render(); }, 120)); Bus.on('comments', () => { if (Panels.tab === 'comments') Panels.render(); }); Bus.on('versions', () => { if (Panels.tab === 'history') Panels.render(); });
@@ -123,8 +123,8 @@ const Panels = {
   render() {
     const el = Panels.el, tab = Panels.tab; if (!tab) return; el.innerHTML = '';
     const head = U.el('div', { class: 'phead' }); Panels.tabs.forEach(([k, l, ic]) => head.append(U.el('button', { class: 'ptab' + (k === tab ? ' on' : ''), title: l, html: U.icon(ic, 18), onclick: () => Panels.show(k) }))); head.append(U.el('span', { class: 'sp' }), UI.ibtn('close', 'Close panel', () => Panels.hide()));
-    const body = U.el('div', { class: 'pscroll' }); el.append(head, U.el('div', { class: 'pname' }, Panels.tabs.find(t => t[0] === tab)[1]), body);
-    ({ design: () => Insp.design(body), layers: () => LayersP.render(body), pages: () => PagesP.render(body), comments: () => CommentsP.render(body), history: () => HistoryP.render(body), find: () => FindP.render(body) })[tab]();
+    const body = U.el('div', { class: 'pscroll' }); el.append(head, U.el('div', { class: 'pname' }, (Panels.tabs.find(t => t[0] === tab) || [0, ''])[1]), body);
+    const map = { design: () => Insp.design(body), layers: () => LayersP.render(body), pages: () => PagesP.render(body), comments: () => CommentsP.render(body), history: () => HistoryP.render(body), find: () => FindP.render(body) }; for (const k in Panels.ext) map[k] = () => Panels.ext[k](body); map[tab]();
   }
 };
 
