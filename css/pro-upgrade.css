@@ -1,0 +1,181 @@
+/* ===== InfiniBoard Pro Upgrade Styles (PDF Ultra + Canvas Pro) ===== */
+
+/* Zoom Writing Window (Goodnotes / Notewise style) */
+.zoombox {
+  position: absolute;
+  left: 76px;
+  right: 16px;
+  bottom: 58px;
+  max-width: 780px;
+  margin: 0 auto;
+  background: var(--pn);
+  border: 2px solid var(--ac);
+  border-radius: 14px;
+  box-shadow: var(--sh);
+  z-index: 30;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.zb-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--pn2);
+  border-bottom: 1px solid var(--bd);
+  font-size: 13px;
+}
+.zb-cv {
+  width: 100%;
+  height: 190px;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  background: #fff;
+}
+
+/* Split-Screen Study Pane (Flexcil / Goodnotes style) */
+.splitpane {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  bottom: 0;
+  background: var(--pn);
+  border-left: 1px solid var(--bd);
+  box-shadow: var(--sh);
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+}
+.split-resizer {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 2;
+}
+.split-resizer:hover { background: rgba(79, 70, 229, .22); }
+.split-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--pn2);
+  border-bottom: 1px solid var(--bd);
+  font-size: 13px;
+}
+.split-editor {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  padding: 14px;
+  resize: none;
+  font: 14px/1.65 Inter, system-ui, -apple-system, sans-serif;
+  background: var(--pn);
+  color: var(--tx);
+  outline: 0;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Active Recall Flashcards */
+.fc-wrap { padding: 6px 0; }
+.fc-card {
+  min-height: 200px;
+  padding: 24px 20px;
+  border-radius: 14px;
+  border: 2px solid var(--bd);
+  background: var(--pn2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s;
+}
+.fc-card:hover { border-color: var(--ac); transform: translateY(-1px); }
+.fc-card.flipped { background: var(--ac2); border-color: var(--ac); }
+.fc-card small { color: var(--tx2); font-weight: 600; letter-spacing: .04em; font-size: 11px; }
+.fc-txt { font-size: 17px; line-height: 1.55; max-width: 100%; word-break: break-word; }
+.fc-hint { opacity: .7; font-size: 12px; }
+
+/* Miro Presentation Mode */
+#app.presenting #topbar,
+#app.presenting #toolbar,
+#app.presenting #panel,
+#app.presenting #minimap,
+#app.presenting #zoombar { display: none !important; }
+#app.presenting #stage { top: 0 !important; left: 0 !important; right: 0 !important; }
+.pres-hud {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--pn);
+  border: 1px solid var(--bd);
+  border-radius: 999px;
+  box-shadow: var(--sh);
+  z-index: 60;
+}
+.pres-count { font-size: 13px; font-weight: 600; padding: 0 6px; color: var(--tx); white-space: nowrap; }
+
+/* Miro Floating Pills (Timer, Dot Voting, Studio Recording) */
+.cpro-pill {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--pn);
+  border: 1px solid var(--bd);
+  border-radius: 999px;
+  box-shadow: var(--sh);
+  z-index: 35;
+  font-size: 13px;
+}
+.cpro-pill.done { border-color: var(--dg); color: var(--dg); }
+.cpro-pill.vote-bar { top: 112px; border-color: var(--ac); }
+.cpro-pill.studio-rec { border-color: var(--dg); }
+.cpro-tdisp { font-variant-numeric: tabular-nums; font-size: 15px; min-width: 48px; text-align: center; }
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e11d48;
+  animation: recpulse 1s infinite alternate;
+}
+@keyframes recpulse { from { opacity: 1; } to { opacity: .25; } }
+
+/* Miro Templates Gallery */
+.cpro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+.cpro-tcard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  background: var(--pn2);
+  text-align: left;
+  transition: .15s;
+}
+.cpro-tcard:hover { border-color: var(--ac); background: var(--ac2); transform: translateY(-1px); }
+.cpro-tcard small { color: var(--tx2); line-height: 1.4; }
+.pdfu-modal .psec { margin-top: 12px; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: var(--tx2); }
